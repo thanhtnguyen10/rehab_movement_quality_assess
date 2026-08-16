@@ -189,6 +189,11 @@ def main():
                    help="pose needs more detail than classification; 640 is a good default")
     p.add_argument("--backend", default="auto", choices=list(BACKENDS))
     p.add_argument("--mirror", action="store_true", help="flip horizontally for a selfie view")
+    p.add_argument("--width", type=int, default=1280,
+                   help="displayed window width in pixels; 0 keeps the camera's native size")
+    p.add_argument("--capture-width", type=int, default=0,
+                   help="ask the camera for this capture width (e.g. 1920); 0 leaves it alone")
+    p.add_argument("--fullscreen", action="store_true")
     p.add_argument("--list-cameras", action="store_true")
     p.add_argument("--max-index", type=int, default=5)
     p.add_argument("--probe", action="store_true")
@@ -203,6 +208,19 @@ def main():
     if not cap.isOpened():
         raise SystemExit(f"cannot open source {args.source!r} -- try --list-cameras")
 
+    if args.capture_width:
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.capture_width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(round(args.capture_width * 9 / 16)))
+        got_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        got_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        print(f"capture set to {got_w}x{got_h}"
+              + ("" if got_w == args.capture_width else "  (camera picked the nearest it supports)"))
+
+    win = "rehab score"
+    cv2.namedWindow(win, cv2.WINDOW_NORMAL)
+    if args.fullscreen:
+        cv2.setWindowProperty(win, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
     link = Link(args.host, args.port, args.quality, args.send_width)
     try:
         link.connect()
@@ -211,6 +229,7 @@ def main():
         raise SystemExit(f"cannot reach {args.host}:{args.port} -- is the SSH tunnel up? ({e})")
 
     latest = {"f": None}
+    sized = {"done": False}
     stop = threading.Event()
 
     def worker():
@@ -240,7 +259,17 @@ def main():
                 frame = cv2.flip(frame, 1)
             latest["f"] = frame.copy()
             people, ms, rtt, sent, err = link.snapshot()
-            cv2.imshow("rehab score", draw(frame, people, ms, rtt, sent, err, args.hz))
+            shown = draw(frame, people, ms, rtt, sent, err, args.hz)
+            if args.width and not args.fullscreen:
+                # scale after drawing so overlays stay crisp at the display size
+                h0, w0 = shown.shape[:2]
+                if w0 != args.width:
+                    shown = cv2.resize(shown, (args.width, int(round(h0 * args.width / w0))),
+                                       interpolation=cv2.INTER_LINEAR)
+                    if not sized["done"]:
+                        cv2.resizeWindow(win, shown.shape[1], shown.shape[0])
+                        sized["done"] = True
+            cv2.imshow(win, shown)
             if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                 break
     finally:

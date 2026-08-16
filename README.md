@@ -64,6 +64,38 @@ python client_cam.py --host localhost --port 5556 --source 1
 A window opens with your camera, one coloured box + skeleton per person, track
 IDs and live scores. **Press `q` or `Esc` to quit.**
 
+Display size is independent of what gets sent to the server:
+
+| Flag | Effect |
+|---|---|
+| `--width 1600` | window width in pixels (default 1280; `0` = camera's native size) |
+| `--fullscreen` | fill the screen |
+| `--capture-width 1920` | ask the camera for a higher capture resolution |
+| `--send-width 640` | width sent to the server — affects pose accuracy and bandwidth, not the window |
+
+The window is resizable by dragging regardless; `--width` sets its initial size
+and scales the drawn frame to match.
+
+### Reaching the server
+
+`serve.py` binds `127.0.0.1` by default, so the client connects through an SSH
+tunnel:
+```bash
+ssh -N -L 5556:localhost:5556 <user>@<server>
+```
+If your SSH session already forwards the port, `--host localhost` just works
+with no separate tunnel command.
+
+On Windows, `bind: Permission denied` means the local port sits inside a
+reserved range (Hyper-V/WSL). Check with
+`netsh interface ipv4 show excludedportrange protocol=tcp` and pick a port
+outside it, or map a different local port: `-L 3333:localhost:5556` then
+`--port 3333`.
+
+To skip the tunnel entirely, start the server with `--host 0.0.0.0` and connect
+to the machine's address directly. That exposes the port to anyone who can reach
+the host and sends webcam frames unencrypted — fine on a trusted lab network,
+not something to leave running unattended.
 
 ### Choosing the exercise
 
