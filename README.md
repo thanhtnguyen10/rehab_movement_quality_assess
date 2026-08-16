@@ -37,12 +37,6 @@ result back with `scp`.
 python src/train.py --target TS --epochs 40 --folds 5 --layout h36m17 --out outputs_h36m
 python src/serve.py --ckpt outputs_h36m/fold0_TS.pt --port 5556 --lift
 ```
-`--lift` requires an `h36m17` checkpoint; using a `coco13` one exits with an
-error rather than silently scoring a mismatched skeleton.
-
-> `--source 0` does not work on the server: it has no camera (`/dev/video*` is
-> empty). A camera index only resolves on the machine the camera is attached to,
-> which is why the client/server split exists.
 
 ## Live laptop webcam (client/server) — recommended
 
@@ -76,26 +70,6 @@ Display size is independent of what gets sent to the server:
 The window is resizable by dragging regardless; `--width` sets its initial size
 and scales the drawn frame to match.
 
-### Reaching the server
-
-`serve.py` binds `127.0.0.1` by default, so the client connects through an SSH
-tunnel:
-```bash
-ssh -N -L 5556:localhost:5556 <user>@<server>
-```
-If your SSH session already forwards the port, `--host localhost` just works
-with no separate tunnel command.
-
-On Windows, `bind: Permission denied` means the local port sits inside a
-reserved range (Hyper-V/WSL). Check with
-`netsh interface ipv4 show excludedportrange protocol=tcp` and pick a port
-outside it, or map a different local port: `-L 3333:localhost:5556` then
-`--port 3333`.
-
-To skip the tunnel entirely, start the server with `--host 0.0.0.0` and connect
-to the machine's address directly. That exposes the port to anyone who can reach
-the host and sends webcam frames unencrypted — fine on a trusted lab network,
-not something to leave running unattended.
 
 ### Choosing the exercise
 
