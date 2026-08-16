@@ -1,0 +1,4 @@
+# Laptop webcam client only. Deliberately excludes torch/rtmlib: all inference
+# runs on the server, so the client stays a thin capture+draw loop.
+opencv-python>=4.8
+numpy>=1.24

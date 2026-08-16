@@ -1,0 +1,17 @@
+# Model weights and checkpoints -- too large for GitHub (100 MB hard limit).
+# RTMO downloads via rtmlib; MotionAGFormer and trained checkpoints are
+# documented in the README.
+models/
+outputs/
+outputs_h36m/
+outputs_dual/
+
+# Local backup of the pre-strip sources
+.commented_backup/
+
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.mp4
+*.avi
