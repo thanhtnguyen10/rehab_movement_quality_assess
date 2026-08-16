@@ -6,8 +6,7 @@ Isolated conda env **`rehab`** (does not touch your existing envs).
 
 ## Quick start
 
-**Live scoring from your laptop webcam** — the normal way to run this. See
-[Live laptop webcam](#live-laptop-webcam-clientserver--recommended) for detail.
+**Live scoring from your laptop webcam** 
 
 ```bash
 # server (this GPU box)
@@ -65,26 +64,6 @@ python client_cam.py --host localhost --port 5556 --source 1
 A window opens with your camera, one coloured box + skeleton per person, track
 IDs and live scores. **Press `q` or `Esc` to quit.**
 
-### Reaching the server
-
-`serve.py` binds `127.0.0.1` by default, so the client connects through an SSH
-tunnel:
-```bash
-ssh -N -L 5556:localhost:5556 <user>@<server>
-```
-If your SSH session already forwards the port, `--host localhost` just works
-with no separate tunnel command.
-
-On Windows, `bind: Permission denied` means the local port sits inside a
-reserved range (Hyper-V/WSL). Check with
-`netsh interface ipv4 show excludedportrange protocol=tcp` and pick a port
-outside it, or map a different local port: `-L 3333:localhost:5556` then
-`--port 3333`.
-
-To skip the tunnel entirely, start the server with `--host 0.0.0.0` and connect
-to the machine's address directly. That exposes the port to anyone who can reach
-the host and sends webcam frames unencrypted — fine on a trusted lab network,
-not something to leave running unattended.
 
 ### Choosing the exercise
 
@@ -99,11 +78,6 @@ must match what the person is actually doing or the number is meaningless:
 | 4 | Pelvis rotation on the transverse plane |
 | 5 | Squatting |
 
-### Reading the display
-
-Each track shows `warming NN%` until its 64-frame window fills (~6 s at 10 Hz),
-then switches to a score. Stuck at `warming` means the person is not being
-tracked consistently — usually too close, partly out of frame, or poor lighting.
 
 ### Troubleshooting
 
@@ -112,13 +86,6 @@ python client_cam.py --list-cameras     # which index is your webcam
 python client_cam.py --probe            # camera + connection + round trip
 ```
 
-Use `rehab_pipeline/client_cam.py`, not the client from `utkinect_mlp` — they
-share the wire format but not the reply schema (`people` here vs `top` there),
-so mixing them raises a `KeyError`.
-
-Measured with client and server on the same machine: **98 fps, 7 ms server
-latency per frame**. Over a real tunnel the uplink dominates — tune with
-`--hz`, `--quality`, `--send-width`.
 
 ### Interpreting the score
 
@@ -161,27 +128,3 @@ correlation on unseen subjects is ~0.6 (see below).
 | TS dual-stream (pos+quat) | 6.17 ± 0.65 | 0.593 ± 0.036 | 0.550 ± 0.026 |
 | TS h36m17 (3D deploy path) | 6.24 ± 0.59 | 0.579 ± 0.042 | 0.543 ± 0.047 |
 
-## Why the numbers look "low"
-Splits are **subject-disjoint**. Published KiMoRe results of 0.95+ Spearman
-typically use random clip splits, which leak subject identity — the same person
-appears in train and test. A leakage-controlled score near 0.6–0.8 is the
-honest signal for unseen patients. Never switch to a random split to get a
-prettier number.
-
-## MotionAGFormer (integrated)
-
-`--lift` runs MotionAGFormer-S on each track's 2D window and scores the metric
-3D output. Joint layouts are the subtle part: RTMO emits COCO-17,
-MotionAGFormer expects/returns Human3.6M-17, and KiMoRe is Kinect-25. The
-`h36m17` layout builds H36M-17 straight from Kinect so the head trains on the
-same skeleton it sees at inference.
-
-## Notes
-- `onnxruntime-gpu` needs CUDA 12 libs from torch; the env activation hook
-  (`etc/conda/activate.d/cuda_libs.sh`) sets `LD_LIBRARY_PATH`. Without it
-  inference silently drops to CPU (~4 FPS).
-- KiMoRe ships **78** subjects; **77** train. `NE_ID2`'s ClinicalAssessment
-  files are stubs — blank scores, and the `Subject ID` cell reads `E_ID1` — so
-  it has no regression target and the loader drops it.
-- Two subjects have `Es6` (no clinical score) — skipped by the loader.
-- `NE_ID11/Es5` lacks `JointPosition` — skipped.
